@@ -67,23 +67,6 @@ def create_app():
     init_db()
     socketio.init_app(app)
 
-    # ---------- Helper Functions ----------
-    def get_folder_size(folder):
-        total = 0
-        for root, dirs, files in os.walk(folder):
-            for f in files:
-                fp = os.path.join(root, f)
-                if os.path.exists(fp):
-                    total += os.path.getsize(fp)
-        return total
-
-    def format_size(bytes):
-        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if bytes < 1024.0:
-                return f"{bytes:.2f} {unit}"
-            bytes /= 1024.0
-        return f"{bytes:.2f} PB"
-
     def get_precise_uptime(start_timestamp):
         if not start_timestamp: return "Offline"
         diff = int(time.time() - start_timestamp)
@@ -98,12 +81,12 @@ def create_app():
         if hours > 0: parts.append(f"{hours}h")
         parts.append(f"{minutes}m")
         return " ".join(parts)
-
-    # ---------- Routes ----------
+    
     @app.route('/')
     def home():
-        return render_template('index.html')
+      return render_template('index.html')
 
+    # --- UPDATED SIGNUP ROUTE ---
     @app.route('/signup', methods=['GET', 'POST'])
     def signup():
         if request.method == 'POST':
@@ -119,6 +102,7 @@ def create_app():
                 return jsonify({'status': 'error', 'msg': 'Passwords do not match!'}), 400
 
             db = get_db()
+            # Check if user already exists
             existing_user = db.execute('SELECT id FROM users WHERE email=? OR username=?', (email, username)).fetchone()
             if existing_user:
                 db.close()
@@ -129,6 +113,7 @@ def create_app():
                 pfp_name = secure_filename(pfp.filename)
                 pfp.save(os.path.join(app.config['UPLOAD_FOLDER'], pfp_name))
 
+            # Logic added: explicitly setting server_limit to 1 for new signups
             db.execute('''INSERT INTO users 
                 (fname, lname, username, email, password, pfp, server_limit, role, status) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
@@ -227,14 +212,10 @@ def create_app():
         user_list = []
         total_cpu = psutil.cpu_percent()
         total_ram = psutil.virtual_memory().percent
-        total_disk_used = 0
-
         for u in users:
             srvs = db.execute('SELECT * FROM servers WHERE user_id=?', (u['id'],)).fetchall()
             active_srvs = 0
-            user_disk = 0
             for s in srvs:
-                # Check online status
                 is_on = False
                 if s['pid'] and psutil.pid_exists(s['pid']):
                     try:
@@ -245,33 +226,13 @@ def create_app():
                 elif s['folder'] in running_procs and running_procs[s['folder']].poll() is None:
                     is_on = True
                 if is_on: active_srvs += 1
-
-                # Calculate folder size
-                folder_path = os.path.join(app.config['BASE_STORAGE'], s['folder'])
-                if os.path.exists(folder_path):
-                    size = get_folder_size(folder_path)
-                    user_disk += size
-                    total_disk_used += size
-
             user_list.append({
-                'id': u['id'], 'fname': u['fname'], 'email': u['email'],
+                'id': u['id'], 'fname': u['fname'], 'email': u['email'], 
                 'srv_count': len(srvs), 'active_srvs': active_srvs,
-                'status': u['status'], 'role': u['role'], 'server_limit': u['server_limit'],
-                'disk_usage': format_size(user_disk)
+                'status': u['status'], 'role': u['role'], 'server_limit': u['server_limit']
             })
         db.close()
-
-        total_disk = psutil.disk_usage('/').total
-        disk_percent = (total_disk_used / total_disk) * 100 if total_disk else 0
-
-        return jsonify({
-            'users': user_list,
-            'sys_cpu': f"{total_cpu}%",
-            'sys_ram': f"{total_ram}%",
-            'disk_used': format_size(total_disk_used),
-            'disk_percent': f"{disk_percent:.1f}%",
-            'disk_total': format_size(total_disk)
-        })
+        return jsonify({'users': user_list, 'sys_cpu': f"{total_cpu}%", 'sys_ram': f"{total_ram}%"})
 
     @app.route('/admin/user/update', methods=['POST'])
     def update_user():
@@ -389,7 +350,6 @@ def create_app():
         if not session.get('admin_logged'): return redirect(url_for('admin_login'))
         return render_template('web/dashboard.html', user={'fname': 'Admin'}, is_admin_view=True, admin_folder=folder)
 
-    # ---------- File Manager Routes ----------
     @app.route('/files/list/<folder>')
     def flist(folder):
         sub_path = request.args.get('path', '')
@@ -497,19 +457,21 @@ def create_app():
         d = request.json
         zip_name = d.get('name')
         sub_path = d.get('path', '')
+        
+        # Path safety calculation
         base = os.path.join(app.config['BASE_STORAGE'], folder, sub_path)
         zip_path = os.path.join(base, zip_name)
         
         if os.path.exists(zip_path) and zipfile.is_zipfile(zip_path):
             try:
                 with zipfile.ZipFile(zip_path, 'r') as z:
+                    # Extracts exactly into the current directory
                     z.extractall(base)
                 return jsonify({'status': 'success'})
             except Exception as e:
                 return jsonify({'status': 'error', 'msg': str(e)})
         return jsonify({'status': 'error', 'msg': 'Invalid zip file'})
 
-    # ---------- Server Management Routes ----------
     @app.route('/server/action/<folder>/<act>', methods=['POST'])
     def server_action(folder, act):
         db = get_db()
