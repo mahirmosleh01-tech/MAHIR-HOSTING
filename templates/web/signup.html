@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-  <title>NE HOST | Create Account</title>
+  <title>MAHIR HOST | Create Account</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -31,7 +31,7 @@
         background-image: 
             radial-gradient(circle at 0% 0%, rgba(0, 122, 255, 0.1) 0%, transparent 40%),
             radial-gradient(circle at 100% 100%, rgba(94, 92, 230, 0.1) 0%, transparent 40%);
-        height: 100vh;
+        min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -47,6 +47,7 @@
         width: 100%;
         max-width: 450px;
         box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        transition: 0.3s;
     }
 
     .logo-area { text-align: center; margin-bottom: 25px; }
@@ -61,7 +62,7 @@
     p { color: var(--text-dim); font-size: 13px; margin-top: 5px; }
 
     .form-group { margin-bottom: 15px; text-align: left; }
-    .form-group label { display: block; font-size: 11px; font-weight: 700; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     
     .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -76,7 +77,7 @@
         transition: 0.3s;
     }
 
-    input:focus { border-color: var(--accent); background: rgba(255,255,255,0.08); }
+    input:focus { border-color: var(--accent); background: rgba(255,255,255,0.08); box-shadow: 0 0 0 3px rgba(0,122,255,0.1); }
 
     .file-input-wrapper {
         position: relative;
@@ -94,7 +95,9 @@
         font-size: 12px;
         cursor: pointer;
         text-align: center;
+        transition: 0.3s;
     }
+    .file-btn:hover { border-color: var(--accent); background: rgba(255,255,255,0.02); }
 
     .btn-signup {
         width: 100%;
@@ -109,11 +112,36 @@
         cursor: pointer;
         transition: 0.3s;
         box-shadow: 0 10px 20px rgba(0, 122, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
     }
     .btn-signup:hover { transform: translateY(-2px); box-shadow: 0 15px 25px rgba(0, 122, 255, 0.4); }
+    .btn-signup:active { transform: scale(0.98); }
+    .btn-signup:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
     .footer-text { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-dim); }
     .footer-text a { color: var(--accent); text-decoration: none; font-weight: 700; }
+
+    .limit-notice {
+        background: rgba(0, 122, 255, 0.1);
+        border: 1px solid rgba(0, 122, 255, 0.2);
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 12px;
+        color: var(--text-dim);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 5px;
+    }
+    .limit-notice i { color: var(--accent); }
+
+    @media (max-width: 480px) {
+        .input-row { grid-template-columns: 1fr; }
+        .signup-box { padding: 25px 20px; }
+    }
   </style>
 </head>
 <body>
@@ -122,24 +150,24 @@
     <div class="logo-area">
         <div class="logo-icon"><i class="fas fa-bolt"></i></div>
         <h2>Create Account</h2>
-        <p>Join NE HOST Ultra Pro Max</p>
+        <p>Join MAHIR HOST Ultra Pro Max</p>
     </div>
 
     <form id="signupForm" enctype="multipart/form-data">
         <div class="input-row">
             <div class="form-group">
                 <label>First Name</label>
-                <input type="text" name="fname" placeholder="John" required>
+                <input type="text" name="fname" placeholder="ONLY" required>
             </div>
             <div class="form-group">
                 <label>Last Name</label>
-                <input type="text" name="lname" placeholder="Doe" required>
+                <input type="text" name="lname" placeholder="MAHIR" required>
             </div>
         </div>
 
         <div class="form-group">
             <label>Username</label>
-            <input type="text" name="username" placeholder="johndoe123" required>
+            <input type="text" name="username" placeholder="mahir123" required>
         </div>
 
         <div class="form-group">
@@ -168,7 +196,15 @@
             </div>
         </div>
 
-        <button type="submit" class="btn-signup">REGISTER NOW</button>
+        <div class="limit-notice">
+            <i class="fas fa-info-circle"></i>
+            Free accounts get <strong>1 server</strong> limit. Upgrade later.
+        </div>
+
+        <button type="submit" class="btn-signup" id="signupBtn">
+            <span>REGISTER NOW</span>
+            <i class="fas fa-arrow-right"></i>
+        </button>
     </form>
 
     <div class="footer-text">
@@ -181,8 +217,12 @@ function updateFileName(input) {
     const label = document.getElementById('file-label');
     if (input.files.length > 0) {
         label.innerHTML = `<i class="fas fa-check"></i> ${input.files[0].name}`;
-        label.style.borderColor = 'var(--success)';
+        label.style.borderColor = '#32d74b';
         label.style.color = '#fff';
+    } else {
+        label.innerHTML = `<i class="fas fa-image"></i> Click to upload photo`;
+        label.style.borderColor = 'var(--border)';
+        label.style.color = 'var(--text-dim)';
     }
 }
 
@@ -190,12 +230,14 @@ document.getElementById('signupForm').onsubmit = async (e) => {
     e.preventDefault();
     
     const formData = new FormData(e.target);
+    const btn = document.getElementById('signupBtn');
+    const btnText = btn.querySelector('span');
+    const btnIcon = btn.querySelector('i');
     
-    // UI Loading state
-    const btn = e.target.querySelector('button');
-    const originalText = btn.innerText;
-    btn.innerText = "CREATING ACCOUNT...";
+    // Loading state
     btn.disabled = true;
+    btnText.innerText = "CREATING ACCOUNT...";
+    btnIcon.className = "fas fa-spinner fa-spin";
 
     try {
         const response = await fetch('/signup', {
@@ -207,30 +249,43 @@ document.getElementById('signupForm').onsubmit = async (e) => {
         
         if (result.status === 'success') {
             Swal.fire({
-                title: 'Success!',
-                text: 'Account created. You have 1 server limit.',
+                title: 'Welcome!',
+                text: 'Account created successfully. You can now login.',
                 icon: 'success',
                 background: '#1c1c1e',
                 color: '#fff',
-                confirmButtonColor: '#007aff'
+                confirmButtonColor: '#007aff',
+                timer: 2500,
+                showConfirmButton: true
             }).then(() => {
                 window.location.href = result.url;
             });
         } else {
             Swal.fire({
-                title: 'Error',
-                text: result.msg,
+                title: 'Registration Failed',
+                text: result.msg || 'Something went wrong.',
                 icon: 'error',
                 background: '#1c1c1e',
-                color: '#fff'
+                color: '#fff',
+                confirmButtonColor: '#007aff'
             });
-            btn.innerText = originalText;
+            // Reset button
             btn.disabled = false;
+            btnText.innerText = "REGISTER NOW";
+            btnIcon.className = "fas fa-arrow-right";
         }
     } catch (error) {
         console.error('Error:', error);
-        btn.innerText = originalText;
+        Swal.fire({
+            title: 'Network Error',
+            text: 'Could not connect to the server. Please try again.',
+            icon: 'error',
+            background: '#1c1c1e',
+            color: '#fff'
+        });
         btn.disabled = false;
+        btnText.innerText = "REGISTER NOW";
+        btnIcon.className = "fas fa-arrow-right";
     }
 };
 </script>

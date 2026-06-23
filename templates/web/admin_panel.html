@@ -39,7 +39,7 @@
 
     /* --- Monitor Screen --- */
     .monitor-grid { 
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 25px; 
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 25px; 
     }
     .stat-pill {
       background: var(--card); border: 0.5px solid var(--border);
@@ -67,13 +67,14 @@
       display: flex; align-items: center; justify-content: center; font-weight: 800;
     }
 
-    .badge-row { margin-top: 8px; display: flex; gap: 5px; }
+    .badge-row { margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap; }
     .ios-badge {
       font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 6px; text-transform: uppercase;
     }
     .badge-limit { background: rgba(0, 122, 255, 0.1); color: var(--blue); }
     .badge-active { background: rgba(52, 199, 89, 0.1); color: var(--green); }
     .badge-banned { background: rgba(255, 59, 48, 0.1); color: var(--accent); }
+    .badge-disk { background: rgba(255, 159, 10, 0.1); color: var(--orange); }
 
     .actions {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
@@ -90,7 +91,7 @@
 <body>
 
 <nav class="navbar">
-  <div style="font-weight:800; font-size:18px;">NE Authority</div>
+  <div style="font-weight:800; font-size:18px;">MAHIR Authority</div>
   <button class="ios-btn" style="flex-direction:row; padding:8px 15px; background:var(--blue); border-radius:20px;" onclick="createUser()">
     <i class="fa-solid fa-plus"></i> <span style="margin-left:5px;">New Identity</span>
   </button>
@@ -107,12 +108,21 @@
       <span class="stat-value" id="totalSrvCount">0</span>
     </div>
     <div class="stat-pill">
-      <span class="stat-label">Suspended</span>
-      <span class="stat-value"><span class="dot dot-suspended"></span> <span id="suspendedCount">0</span> Users</span>
+      <span class="stat-label">RAM Usage</span>
+      <span class="stat-value" id="ramVal">0%</span>
     </div>
     <div class="stat-pill">
       <span class="stat-label">CPU Usage</span>
       <span class="stat-value" id="cpuVal">0%</span>
+    </div>
+    <div class="stat-pill" style="grid-column: span 2;">
+      <span class="stat-label">Storage Used</span>
+      <span class="stat-value" id="diskVal">0 GB</span>
+      <span style="font-size:12px; color:#8e8e93; display:block; margin-top:2px;" id="diskPercent">0% of total</span>
+    </div>
+    <div class="stat-pill" style="grid-column: span 2;">
+      <span class="stat-label">Suspended</span>
+      <span class="stat-value"><span class="dot dot-suspended"></span> <span id="suspendedCount">0</span> Users</span>
     </div>
   </div>
 
@@ -126,6 +136,9 @@ async function loadData() {
         const d = await r.json();
         
         document.getElementById('cpuVal').innerText = d.sys_cpu || "0%";
+        document.getElementById('ramVal').innerText = d.sys_ram || "0%";
+        document.getElementById('diskVal').innerText = d.disk_used || "0 GB";
+        document.getElementById('diskPercent').innerText = d.disk_percent || "0% of total";
         
         let totalSrv = 0;
         let onlineSrv = 0;
@@ -137,8 +150,8 @@ async function loadData() {
             onlineSrv += u.active_srvs;
             if(u.status === 'banned') bannedUsers++;
 
-            // FIX: server_limit undefined check based on your __init__.py
             const limit = u.server_limit !== undefined ? u.server_limit : 1;
+            const disk = u.disk_usage || "0 MB";
 
             return `
             <div class="user-card animate__animated animate__fadeIn">
@@ -149,6 +162,7 @@ async function loadData() {
                         <div class="badge-row">
                             <span class="ios-badge badge-limit">Limit: ${limit}</span>
                             <span class="ios-badge ${u.status === 'active' ? 'badge-active' : 'badge-banned'}">${u.status}</span>
+                            <span class="ios-badge badge-disk"><i class="fas fa-hdd"></i> ${disk}</span>
                         </div>
                     </div>
                     <div style="text-align:right; font-size:11px; font-weight:700;">

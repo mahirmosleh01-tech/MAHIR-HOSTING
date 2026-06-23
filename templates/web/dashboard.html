@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-  <title>NE HOST | Ultra Pro Max</title>
+  <title>MAHIR HOST | Ultra Pro Max</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/codemirror.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/theme/dracula.min.css">
@@ -57,12 +57,21 @@
     .btn-gray { background: #1c1c1e; color: #fff; border: 1px solid var(--border); }
 
     .file-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .file-item .actions { display: flex; gap: 8px; }
+    .file-item .actions .btn-startup { background: rgba(255, 159, 10, 0.15); color: #ff9f0a; border: none; border-radius: 6px; padding: 4px 10px; font-size: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .file-item .actions .btn-startup.active { background: rgba(50, 215, 75, 0.15); color: #32d74b; }
+
     .menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; z-index: 5000; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
     .menu-content { background: #1c1c22; width: 280px; border-radius: 20px; border: 1px solid var(--border); }
     .menu-item { padding: 14px 20px; color: #fff; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
     
     #editor { display:none; position:fixed; inset:0; background:var(--bg); z-index:6000; padding:15px; }
     .CodeMirror { height: 85vh; border-radius: 12px; font-size: 14px; }
+
+    .sys-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+    .stat-box { background: var(--card); border-radius: 12px; padding: 12px; border: 1px solid var(--border); text-align: center; }
+    .stat-box .label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+    .stat-box .value { font-size: 18px; font-weight: 800; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -70,7 +79,7 @@
 <div class="topbar">
     <div class="logo-box">
         <div class="logo-icon"><i class="fas fa-bolt"></i></div>
-        <span>NE HOST</span>
+        <span>MAHIR HOST</span>
     </div>
     <div style="display:flex; gap:10px;">
         <button class="btn btn-gray" onclick="location.href='/logout'"><i class="fas fa-sign-out-alt"></i></button>
@@ -82,6 +91,14 @@
         <h2 style="margin:0;">Instances</h2>
         <button class="btn btn-blue" onclick="createServer()"><i class="fas fa-plus"></i> Create</button>
     </div>
+    
+    <!-- System Stats -->
+    <div class="sys-stats" id="sysStats">
+        <div class="stat-box"><div class="label">CPU</div><div class="value" id="cpuStat">-</div></div>
+        <div class="stat-box"><div class="label">RAM</div><div class="value" id="ramStat">-</div></div>
+        <div class="stat-box"><div class="label">Storage</div><div class="value" id="diskStat">-</div></div>
+    </div>
+
     <div id="srvList"></div>
 </div>
 
@@ -112,7 +129,8 @@
     <div style="background:var(--card); border-radius:18px; border:1px solid var(--border); overflow:hidden;">
         <div style="padding:15px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
             <span style="font-weight:800; font-size:13px;">FILE MANAGER</span>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; align-items:center;">
+                <span id="currentStartup" style="font-size:10px; color:var(--text-dim);">Startup: <span id="startupFile">main.py</span></span>
                 <button class="btn btn-gray" style="padding:5px 10px" onclick="document.getElementById('fUp').click()"><i class="fas fa-upload"></i></button>
                 <button class="btn btn-gray" style="padding:5px 10px" onclick="createNew('file')"><i class="fas fa-plus"></i></button>
                 <input type="file" id="fUp" hidden onchange="uploadFile(this)">
@@ -125,6 +143,7 @@
 <div class="menu-overlay" id="menuOverlay" onclick="this.style.display='none'">
     <div class="menu-content" onclick="event.stopPropagation()">
         <div class="menu-item" id="btnEdit"><i class="fas fa-edit"></i> Edit File</div>
+        <div class="menu-item" id="btnSetStartup"><i class="fas fa-play-circle"></i> Set as Startup</div>
         <div class="menu-item" id="btnRename"><i class="fas fa-pen"></i> Rename</div>
         <div class="menu-item" id="btnZip"><i class="fas fa-file-archive"></i> Archive</div>
         <div class="menu-item" id="btnUnzip"><i class="fas fa-box-open"></i> Unzip</div>
@@ -145,6 +164,18 @@
 
 <script>
 let curSrv = null; let logItv = null; let currentSubPath = ""; let editorInstance = null;
+let selectedFileName = null; // for menu actions
+
+// Load system stats
+async function loadSysStats() {
+    try {
+        const res = await fetch('/admin/stats');
+        const data = await res.json();
+        if (data.sys_cpu) document.getElementById('cpuStat').innerText = data.sys_cpu;
+        if (data.sys_ram) document.getElementById('ramStat').innerText = data.sys_ram;
+        if (data.disk_used) document.getElementById('diskStat').innerText = data.disk_used;
+    } catch(e) { console.log('Stats not available'); }
+}
 
 // Original Load Logic
 async function loadSrv() {
@@ -165,7 +196,9 @@ async function loadSrv() {
 function openSrv(s) {
     curSrv = s; document.getElementById('homeView').style.display='none'; document.getElementById('manageView').style.display='block';
     document.getElementById('vSrvName').innerText = s.name;
-    loadFiles(); startLogs();
+    // Load current startup file
+    document.getElementById('startupFile').innerText = s.startup || 'main.py';
+    loadFiles(); startLogs(); loadSysStats();
 }
 
 // Fixed Unzip Function (Works with sub-folders)
@@ -200,18 +233,41 @@ async function loadFiles() {
     document.getElementById('fileList').innerHTML = d.map(f => `
         <div class="file-item" onclick="${f.is_dir ? `enterFolder('${f.name}')` : ''}">
             <span><i class="fas ${f.is_dir?'fa-folder':'fa-file'}"></i> ${f.name}</span>
-            <i class="fas fa-ellipsis-v" onclick="event.stopPropagation(); openFileMenu('${f.name}', ${f.is_zip}, ${f.is_dir})"></i>
+            <div class="actions">
+                ${!f.is_dir ? `<button class="btn-startup ${f.name === (curSrv.startup || 'main.py') ? 'active' : ''}" onclick="event.stopPropagation(); setStartup('${f.name}')"><i class="fas fa-play"></i> Startup</button>` : ''}
+                <i class="fas fa-ellipsis-v" onclick="event.stopPropagation(); openFileMenu('${f.name}', ${f.is_zip}, ${f.is_dir})"></i>
+            </div>
         </div>`).join('');
 }
 
 function openFileMenu(name, isZip, isDir) {
+    selectedFileName = name;
     document.getElementById('btnEdit').style.display = isDir ? 'none' : 'flex';
     document.getElementById('btnUnzip').style.display = isZip ? 'flex' : 'none';
+    document.getElementById('btnSetStartup').style.display = isDir ? 'none' : 'flex';
     document.getElementById('btnEdit').onclick = () => editFile(name);
+    document.getElementById('btnSetStartup').onclick = () => { setStartup(name); document.getElementById('menuOverlay').style.display='none'; };
     document.getElementById('btnUnzip').onclick = () => unzipAction(name);
     document.getElementById('btnDelete').onclick = () => deleteFile(name);
     document.getElementById('btnRename').onclick = () => renameFile(name);
     document.getElementById('menuOverlay').style.display = 'flex';
+}
+
+async function setStartup(fileName) {
+    const res = await fetch(`/server/set-startup/${curSrv.folder}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: fileName })
+    });
+    const data = await res.json();
+    if(data.status === 'success') {
+        document.getElementById('startupFile').innerText = fileName;
+        curSrv.startup = fileName;
+        notify('Startup file set to: ' + fileName);
+        loadFiles(); // refresh to update active state
+    } else {
+        Swal.fire('Error', 'Failed to set startup file', 'error');
+    }
 }
 
 function enterFolder(n) { currentSubPath += (currentSubPath===""?"":"/")+n; loadFiles(); }
@@ -255,6 +311,14 @@ async function deleteFile(n) {
     const res = await Swal.fire({title:'Delete?', text:n, icon:'warning', showCancelButton:true});
     if(res.isConfirmed) {
         await fetch(`/files/delete-bulk/${curSrv.folder}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({names:[n], path:currentSubPath})});
+        loadFiles();
+    }
+}
+
+async function renameFile(oldName) {
+    const {value:newName} = await Swal.fire({title:'Rename', input:'text', inputValue:oldName});
+    if(newName && newName !== oldName) {
+        await fetch(`/files/rename/${curSrv.folder}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({old:oldName, new:newName, path:currentSubPath})});
         loadFiles();
     }
 }
